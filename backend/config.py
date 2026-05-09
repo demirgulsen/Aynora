@@ -3,6 +3,7 @@
 # Reads all configuration from environment variables / .env file.
 # ============================================================
 import os
+from typing import ClassVar, Set, Tuple
 from pydantic_settings import BaseSettings
 
 
@@ -27,11 +28,11 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "static/uploads"
 
     # Supported input formats
-    ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
+    ALLOWED_FORMATS: ClassVar[Set[str]] = {"JPEG", "PNG", "WEBP"}
 
     # Max dimensions before resizing (CLIP works best with 224x224,
     # but we keep a larger size for Gemini Vision quality)
-    MAX_SIZE = (1024, 1024)
+    MAX_SIZE: ClassVar[Tuple[int, int]] = (1024, 1024)
 
     class Config:
         env_file = ".env"
