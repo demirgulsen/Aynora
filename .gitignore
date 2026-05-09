@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment variables — NEVER commit this
+backend/.env
+aynora-env
+!.env.example
+
+# ChromaDB — too large for git
+data/chroma_db/
+
+# Dataset files — too large for git
+data/*.zip
+data/*.tar.gz
+data/*.csv
+data/*.json
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
