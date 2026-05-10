@@ -5,9 +5,11 @@
 import os
 from typing import ClassVar, Set, Tuple
 from pydantic_settings import BaseSettings
-
+from pydantic import ConfigDict
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8")
+
     # Gemini API
     GEMINI_API_KEY: str
 
@@ -34,10 +36,8 @@ class Settings(BaseSettings):
     # but we keep a larger size for Gemini Vision quality)
     MAX_SIZE: ClassVar[Tuple[int, int]] = (1024, 1024)
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 # Single instance — import this everywhere
 settings = Settings()
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
