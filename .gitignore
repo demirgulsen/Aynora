@@ -19,7 +19,7 @@ aynora-env
 !.env.example
 
 # ChromaDB — too large for git
-data/chroma_db/
+backend/data/chroma_db/
 
 # Dataset files — too large for git
 data/*.zip
@@ -43,3 +43,5 @@ frontend/.env
 # OS
 .DS_Store
 Thumbs.db
+
+roadmap.md

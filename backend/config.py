@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
 
     # ChromaDB persistent storage path
-    CHROMA_DB_PATH: str = "../data/chroma_db"
+    CHROMA_DB_PATH: str = "data/chroma_db"
 
     # CORS — comma-separated list of allowed origins
     # Example in .env: CORS_ORIGINS=http://localhost:3000,http://localhost:5173
