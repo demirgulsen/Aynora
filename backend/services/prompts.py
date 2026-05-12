@@ -23,7 +23,7 @@ Respond ONLY with valid JSON. No markdown, no code fences, no extra text.
 # ------------------------------------------------------------
 # OUTFIT RECOMMENDATION PROMPT (RAG)
 # Used in: gemini_service.generate_outfit_recommendation()
-# Goal: Generate 3 outfit suggestions using ChromaDB context
+# Goal: Generate 5 outfit suggestions using ChromaDB context
 # Placeholders: {color}, {category}, {style}, {pattern},
 #               {description}, {size}, {concept},
 #               {color_preference}, {rag_context}
@@ -48,7 +48,7 @@ REFERENCE OUTFITS (from fashion database — use as inspiration, do not copy dir
 {rag_context}
 
 TASK:
-Generate 3 distinct outfit recommendations that:
+Generate 5 distinct outfit recommendations that:
 1. Complement the user's clothing item naturally
 2. Suit the "{concept}" occasion
 3. Respect the "{color_preference}" color preference
@@ -102,7 +102,7 @@ USER PREFERENCES:
 - Color preference: {color_preference}
 
 TASK:
-Generate 3 distinct outfit recommendations based purely on your fashion expertise.
+Generate 5 distinct outfit recommendations based purely on your fashion expertise.
 Each outfit should complement the user's clothing item for the "{concept}" occasion.
 
 Return a JSON object with this exact structure:
