@@ -1,4 +1,3 @@
-import os
 import io
 import json
 import logging
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize Gemini client
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
-GEMINI_MODEL = "gemini-3-flash-preview"
+GEMINI_MODEL = "gemini-3.1-flash-lite"  # gemini-2.0-flash, gemini-3-flash-preview
 
 
 def _parse_json_response(raw: str) -> dict:
