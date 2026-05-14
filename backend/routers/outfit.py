@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from models.outfit_models import (AnalyzeRequest, RecommendRequest, AnalyzeResponse, RecommendResponse)
-from services.gemini_service import analyze_clothing, generate_outfit_recommendation
+from models.outfit_models import (AnalyzeRequest, RecommendRequest, AnalyzeResponse, RecommendResponse, ChatRecommendRequest, ChatRecommendResponse,)
+from services.gemini_service import analyze_clothing, generate_outfit_recommendation, chat_recommend
 from services.clip_service import base64_to_embedding
 from services.chroma_service import search_similar_outfits, get_collection_stats
 
@@ -72,5 +72,34 @@ async def stats():
     """
     try:
         return get_collection_stats()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.post("/chat-recommend", response_model=ChatRecommendResponse)
+async def chat_recommend_endpoint(request: ChatRecommendRequest):
+    """
+    Generate outfit recommendations from text only — no image required.
+    Supports multi-turn conversation via chat_history.
+    """
+    try:
+        result = await chat_recommend(
+            message=request.message,
+            concept=request.concept,
+            size=request.size,
+            color_preference=request.color_preference,
+            gender=request.gender,
+            weather=request.weather,
+            language=request.language,
+            additional_notes=request.additional_notes,
+            chat_history=[m.model_dump() for m in (request.chat_history or [])],
+        )
+
+        return {
+            "success": True,
+            "recommendations": {"outfits": result["outfits"]},
+            "assistant_message": result["assistant_message"],
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

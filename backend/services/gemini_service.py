@@ -4,7 +4,8 @@ import logging
 from google import genai
 from google.genai import types
 from config import settings
-from services.prompts import (CLOTHING_ANALYSIS_PROMPT, OUTFIT_RECOMMENDATION_PROMPT, OUTFIT_RECOMMENDATION_FALLBACK_PROMPT)
+from services.prompts import (CLOTHING_ANALYSIS_PROMPT, OUTFIT_RECOMMENDATION_PROMPT,
+                              OUTFIT_RECOMMENDATION_FALLBACK_PROMPT, CHAT_RECOMMEND_PROMPT)
 from utils.image_utils import process_uploaded_image
 from google.api_core.exceptions import ResourceExhausted, DeadlineExceeded, ServiceUnavailable
 
@@ -124,3 +125,47 @@ async def generate_outfit_recommendation(clothing_analysis: dict, concept: str, 
 
     raw = _call_gemini(contents=prompt)
     return _parse_json_response(raw)
+
+
+async def chat_recommend(message: str, concept: str, size: str, color_preference: str, gender: str, weather: str, language: str, additional_notes: str | None, chat_history: list[dict]) -> dict:
+    """
+    Generate outfit recommendations from text description only.
+    No image required — pure chat mode.
+    """
+    # Format additional notes section
+    additional_notes_section = (
+        f"- Additional notes: {additional_notes}"
+        if additional_notes
+        else ""
+    )
+
+    # Format chat history for context
+    if chat_history:
+        history_lines = "\n".join([
+            f"{msg['role'].upper()}: {msg['content']}"
+            for msg in chat_history[-6:]  # Son 6 mesaj — context window'u aşmamak için
+        ])
+        chat_history_section = f"PREVIOUS CONVERSATION:\n{history_lines}"
+    else:
+        chat_history_section = ""
+
+    prompt = CHAT_RECOMMEND_PROMPT.format(
+        message=message,
+        concept=concept,
+        size=size,
+        color_preference=color_preference,
+        gender=gender,
+        weather=weather,
+        language=language,
+        additional_notes_section=additional_notes_section,
+        chat_history_section=chat_history_section,
+    )
+
+    raw = _call_gemini(contents=prompt)
+    result = _parse_json_response(raw)
+
+    # assistant_message ve outfits ayrı döndür
+    return {
+        "assistant_message": result.get("assistant_message", ""),
+        "outfits": result.get("outfits", [])
+    }
