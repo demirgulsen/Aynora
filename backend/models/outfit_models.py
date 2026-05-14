@@ -58,6 +58,11 @@ class Weather(str, Enum):
     cold = "cold"
     hot = "hot"
 
+
+class ChatMessage(BaseModel):
+    role: str        # "user" or "assistant"
+    content: str
+
 # ------------------------------------------------------------
 # REQUEST MODELS
 # ------------------------------------------------------------
@@ -82,9 +87,23 @@ class RecommendRequest(BaseModel):
     )
     gender: Gender = Field(default=Gender.unisex)
     weather: Weather = Field(default=Weather.sunny)
-    additional_notes: Optional[str] = Field(None, description="Örn: Vintage olsun, sadece keten parçalar vb.")
+    additional_notes: Optional[str] = Field(None, description="For example: Vintage, just linen pieces, etc.")
     language: Language = Field(default=Language.turkish)
 
+
+class ChatRecommendRequest(BaseModel):
+    message: str = Field(..., description="User's combination request")
+    concept: Concept = Field(default=Concept.casual)
+    size: Size = Field(default=Size.m)
+    color_preference: ColorPreference = Field(default=ColorPreference.no_preference)
+    gender: Gender = Field(default=Gender.unisex)
+    weather: Weather = Field(default=Weather.sunny)
+    language: Language = Field(default=Language.turkish)
+    additional_notes: Optional[str] = None
+    chat_history: Optional[list[ChatMessage]] = Field(
+        default=[],
+        description="Previous messages — for multi-turn conversation"
+    )
 
 # ------------------------------------------------------------
 # RESPONSE MODELS
@@ -130,6 +149,12 @@ class RecommendResponse(BaseModel):
     success: bool
     analysis: ClothingAnalysis
     recommendations: RecommendationResult
+
+
+class ChatRecommendResponse(BaseModel):
+    success: bool
+    recommendations: RecommendationResult
+    assistant_message: str
 
 
 class ErrorResponse(BaseModel):
