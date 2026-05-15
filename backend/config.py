@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     # Gemini API
     GEMINI_API_KEY: str
 
+    # Serper.dev Image Search
+    SERPER_API_KEY: str = ""
+
     # ChromaDB persistent storage path
     CHROMA_DB_PATH: str = "data/chroma_db"
 
