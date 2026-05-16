@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     # Serper.dev Image Search
     SERPER_API_KEY: str = ""
 
+    # Upstash Redis — Semantic Cache
+    UPSTASH_REDIS_REST_URL: str = ""
+    UPSTASH_REDIS_REST_TOKEN: str = ""
+
     # ChromaDB persistent storage path
     CHROMA_DB_PATH: str = "data/chroma_db"
 

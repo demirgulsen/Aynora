@@ -15,6 +15,7 @@ Analyze this clothing item and return a JSON object with the following fields:
 - pattern: pattern type (e.g. "solid", "striped", "floral", "plaid", "graphic")
 - season: suitable season(s) (e.g. "summer", "winter", "all-season")
 - description: one sentence describing the item in English
+- gender: type of gender (e.g. "male", "female")
 
 Respond ONLY with valid JSON. No markdown, no code fences, no extra text.
 """
@@ -23,7 +24,7 @@ Respond ONLY with valid JSON. No markdown, no code fences, no extra text.
 # ------------------------------------------------------------
 # OUTFIT RECOMMENDATION PROMPT (RAG)
 # Used in: gemini_service.generate_outfit_recommendation()
-# Goal: Generate 5 outfit suggestions using ChromaDB context
+# Goal: Generate 6 outfit suggestions using ChromaDB context
 # Placeholders: {color}, {category}, {style}, {pattern},
 #               {description}, {size}, {concept},
 #               {color_preference}, {rag_context}
@@ -43,12 +44,14 @@ USER PREFERENCES:
 - Size: {size}
 - Occasion / Concept: {concept}
 - Color preference: {color_preference}
+- Gender={gender}
+- Language={language}
 
 REFERENCE OUTFITS (from fashion database — use as inspiration, do not copy directly):
 {rag_context}
 
 TASK:
-Generate 5 distinct outfit recommendations that:
+Generate 6 distinct outfit recommendations that:
 1. Complement the user's clothing item naturally
 2. Suit the "{concept}" occasion
 3. Respect the "{color_preference}" color preference
@@ -100,9 +103,11 @@ USER PREFERENCES:
 - Size: {size}
 - Occasion / Concept: {concept}
 - Color preference: {color_preference}
+- Gender={gender}
+- Language={language}
 
 TASK:
-Generate 5 distinct outfit recommendations based purely on your fashion expertise.
+Generate 6 distinct outfit recommendations based purely on your fashion expertise.
 Each outfit should complement the user's clothing item for the "{concept}" occasion.
 
 Return a JSON object with this exact structure:
@@ -146,6 +151,7 @@ USER PREFERENCES:
 - Color preference: {color_preference}
 - Gender: {gender}
 - Weather: {weather}
+- Language={language}
 {additional_notes_section}
 
 {chat_history_section}

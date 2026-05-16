@@ -1,139 +1,157 @@
 """
-Google Custom Search API integration for Aynora.
-Finds real product images and shopping links for outfit pieces.
+search_service.py — Serper.dev image search integration
+Finds real product images and purchase links for outfit pieces.
+All pieces are searched concurrently for maximum speed.
 """
 
+import asyncio
 import httpx
 import logging
-from config import settings
 from urllib.parse import urlparse
+from config import settings
 
 logger = logging.getLogger(__name__)
 
-
-# Serper Görsel Arama Endpoint'i
 SERPER_IMAGES_URL = "https://google.serper.dev/images"
+SHOPPING_SUFFIX   = "satın al mağaza"
 
-# Shopping-focused query suffix — improves product result quality
-SHOPPING_SUFFIX = "satın al mağaza"
+# Gender query mapping
+GENDER_MAP = {
+    "female": "kadın",
+    "male":   "erkek",
+    "unisex": "",
+}
 
 
-async def search_product(query: str, color: str | None = None, num_results: int = 3) -> list[dict]:
+async def search_product(
+    query:       str,
+    color:       str | None = None,
+    gender:      str        = "female",
+    num_results: int        = 2,
+) -> list[dict]:
     """
-    Serper.dev API kullanarak ürün görseli ve linki arar.
+    Search Serper.dev for product images and shopping links.
+    Returns list of {image_url, page_url, title, source}.
     """
-    # API Key kontrolü (settings içinde SERPER_API_KEY olduğunu varsayıyorum)
     api_key = getattr(settings, "SERPER_API_KEY", None)
-
     if not api_key:
-        logger.warning("Serper API Key bulunamadı — arama atlanıyor")
+        logger.warning("SERPER_API_KEY not set — skipping search")
         return []
 
-    # Sorguyu oluştur
-    search_query = f"{color} {query}" if color else query
-    search_query = f"{search_query} {SHOPPING_SUFFIX}"
+    gender_tr    = GENDER_MAP.get(gender, "")
+    search_query = " ".join(filter(None, [gender_tr, color, query, SHOPPING_SUFFIX]))
 
-    # Serper POST gövdesi
     payload = {
-        "q": search_query,
-        "num": min(num_results, 10),
-        "gl": "tr",  # Türkiye sonuçları için
-        "hl": "tr",  # Türkçe dil desteği
-        "safeSearch": True
+        "q":          search_query,
+        "num":        min(num_results, 10),
+        "gl":         "tr",
+        "hl":         "tr",
+        "safeSearch": True,
     }
 
     headers = {
-        "X-API-KEY": api_key,
-        "Content-Type": "application/json"
+        "X-API-KEY":    api_key,
+        "Content-Type": "application/json",
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # Serper POST isteği kabul eder
-            response = await client.post(SERPER_IMAGES_URL, headers=headers, json=payload)
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.post(SERPER_IMAGES_URL, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
 
-        # Serper 'images' anahtarı altında liste döner
-        items = data.get("images", [])
-        results = []
+        return [
+            {
+                "image_url": item.get("imageUrl", ""),
+                "page_url":  item.get("link", ""),
+                "title":     item.get("title", ""),
+                "source":    _extract_domain(item.get("link", "")),
+            }
+            for item in data.get("images", [])[:num_results]
+            if item.get("imageUrl") and item.get("link")
+        ]
 
-        for item in items:
-            results.append({
-                "image_url": item.get("imageUrl", ""),  # Doğrudan resim linki
-                "page_url": item.get("link", ""),  # Resmin bulunduğu sayfa (alışveriş linki)
-                "title": item.get("title", ""),
-                "source": _extract_domain(item.get("link", "")),
-            })
-
-        return results
-
+    except httpx.TimeoutException:
+        logger.warning(f"Serper timeout: {search_query}")
+        return []
     except httpx.HTTPStatusError as e:
-        logger.error(f"Serper API Hatası: {e.response.status_code} - {e.response.text}")
+        logger.error(f"Serper HTTP {e.response.status_code}: {search_query}")
         return []
     except Exception as e:
-        logger.error(f"Arama sırasında beklenmedik hata: {e}")
+        logger.error(f"Serper error: {e}")
         return []
 
 
-
-async def enrich_outfit_pieces(outfits: list[dict]) -> list[dict]:
+async def search_piece_extended(
+    query:       str,
+    color:       str = "",
+    gender:      str = "female",
+    num_results: int = 10,
+) -> list[dict]:
     """
-    Enrich outfit pieces with real product images and shopping links.
-    Called after Gemini generates outfit recommendations.
-
-    For each piece in each outfit:
-    → Search Google for matching product
-    → Add image_url and page_url to the piece
+    Extended search for a single piece — used by the
+    'Show More' modal in the frontend.
     """
-    enriched_outfits = []
+    return await search_product(
+        query=query,
+        color=color or None,
+        gender=gender,
+        num_results=num_results,
+    )
 
-    for outfit in outfits:
-        enriched_pieces = []
 
-        for piece in outfit.get("pieces", []):
-            # Search for this piece
-            results = await search_product(
-                query=piece.get("description", ""),
-                color=piece.get("color"),
-                num_results=2,
-            )
+async def enrich_outfit_pieces(
+    outfits: list[dict],
+    gender:  str = "female",
+) -> list[dict]:
+    """
+    Enrich all outfit pieces with product images and shopping links.
+    All HTTP requests run concurrently — significantly faster than sequential.
+    """
 
-            # Add best result to piece
-            enriched_piece = {**piece}
-            if results:
-                enriched_piece["image_url"] = results[0]["image_url"]
-                enriched_piece["shopping_links"] = [
-                    {
-                        "url"   : r["page_url"],
-                        "source": r["source"],
-                        "title" : r["title"],
-                    }
-                    for r in results
-                    if r["page_url"]
-                ]
-            else:
-                enriched_piece["image_url"] = None
-                enriched_piece["shopping_links"] = []
+    async def enrich_piece(piece: dict) -> dict:
+        results = await search_product(
+            query=piece.get("description", ""),
+            color=piece.get("color"),
+            gender=gender,
+            num_results=2,
+        )
+        enriched = {**piece}
+        if results:
+            enriched["image_url"]      = results[0]["image_url"]
+            enriched["shopping_links"] = [
+                {
+                    "url":    r["page_url"],
+                    "source": r["source"],
+                    "title":  r["title"],
+                }
+                for r in results
+                if r["page_url"]
+            ]
+        else:
+            enriched["image_url"]      = None
+            enriched["shopping_links"] = []
+        return enriched
 
-            enriched_pieces.append(enriched_piece)
+    async def enrich_outfit(outfit: dict) -> dict:
+        # All pieces in this outfit searched concurrently
+        enriched_pieces = await asyncio.gather(*[
+            enrich_piece(piece) for piece in outfit.get("pieces", [])
+        ])
+        return {**outfit, "pieces": list(enriched_pieces)}
 
-        enriched_outfits.append({
-            **outfit,
-            "pieces": enriched_pieces
-        })
-
-    return enriched_outfits
+    # All outfits searched concurrently
+    enriched_outfits = await asyncio.gather(*[
+        enrich_outfit(outfit) for outfit in outfits
+    ])
+    return list(enriched_outfits)
 
 
 def _extract_domain(url: str) -> str:
-    """Extract clean domain name from URL for display."""
+    """Extract clean domain name from URL."""
     if not url:
         return ""
     try:
-        from urllib.parse import urlparse
-        domain = urlparse(url).netloc
-        # Remove www. prefix
-        return domain.replace("www.", "")
+        return urlparse(url).netloc.replace("www.", "")
     except Exception:
         return ""

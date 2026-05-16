@@ -7,6 +7,7 @@ import base64
 import io
 import os
 import uuid
+import hashlib
 from PIL import Image
 
 # Supported input formats
@@ -72,14 +73,28 @@ def image_to_base64(image: Image.Image, format: str = "JPEG") -> str:
     return base64.b64encode(buffer.read()).decode("utf-8")
 
 
+# utils/image_utils.py — save_upload fonksiyonunu güncelle
+
+
+
 def save_upload(image: Image.Image, prefix: str = "upload") -> str:
     """
-    Save image to static/uploads/ for debugging purposes.
-    Returns the file path of the saved image.
+    Save image to static/uploads/ for debugging.
+    Skips saving if identical image already exists (hash check).
     """
-    filename = f"{prefix}_{uuid.uuid4().hex[:8]}.jpg"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    image.convert("RGB").save(filepath, format="JPEG")
+    # Hash based on image content — same image = same hash
+    buffer = io.BytesIO()
+    image.convert("RGB").save(buffer, format="JPEG")
+    img_hash  = hashlib.md5(buffer.getvalue()).hexdigest()[:12]
+    filename  = f"{prefix}_{img_hash}.jpg"
+    filepath  = os.path.join(UPLOAD_DIR, filename)
+
+    # Skip if already saved
+    if os.path.exists(filepath):
+        return filepath
+
+    with open(filepath, "wb") as f:
+        f.write(buffer.getvalue())
     return filepath
 
 
