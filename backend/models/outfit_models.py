@@ -127,6 +127,7 @@ class OutfitPiece(BaseModel):
     where_to_find: str
     image_url: Optional[str] = None
     confidence_score: Optional[float] = None
+    shopping_links: Optional[list[dict]] = []
 
 
 class OutfitItem(BaseModel):

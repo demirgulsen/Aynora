@@ -1,72 +1,86 @@
 import { useState } from "react"
+import { useStreamingRecommend } from "./hooks/useStreamingRecommend"
+import LandingSection from "./components/LandingSection"
 import UploadSection from "./components/UploadSection"
+import ChatSection from "./components/ChatSection"
 import FilterPanel from "./components/FilterPanel"
 import OutfitResults from "./components/OutfitResults"
+import LoadingStatus from "./components/LoadingStatus"
 import "./index.css"
 
 export default function App() {
-  const [image, setImage] = useState(null)       // base64
-  const [preview, setPreview] = useState(null)   // object URL
-  const [filters, setFilters] = useState({
-    concept: "casual",
-    size: "M",
+  const [mode,        setMode]        = useState(null)
+  const [image,       setImage]       = useState(null)
+  const [preview,     setPreview]     = useState(null)
+  const [filters,     setFilters]     = useState({
+    concept: "casual", size: "M",
     color_preference: "no_preference",
-    gender: "female",
-    language: "tr",
-    weather: "sunny",
-    additional_notes: ""
+    gender: "female", language: "tr",
+    weather: "sunny", additional_notes: ""
   })
-  const [result, setResult] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [step, setStep] = useState("upload") // upload | filter | result
+  const [chatMessage,  setChatMessage]  = useState("")
+  const [chatHistory,  setChatHistory]  = useState([])
+  const [step,         setStep]         = useState("landing")
+
+  const {
+    stage, stageMessage,
+    analysis, assistantMessage,
+    outfits, enrichedCount,
+    done, error, isLoading,
+    recommendVisual, recommendChat, reset: resetStream,
+  } = useStreamingRecommend()
+
+  // ── Handlers ─────────────────────────────────────────────
+
+  const handleModeSelect = (m) => {
+    setMode(m)
+    setStep(m === "visual" ? "upload" : "chat")
+  }
 
   const handleImageUpload = (base64, previewUrl) => {
     setImage(base64)
     setPreview(previewUrl)
-    setResult(null)
-    setError(null)
+    resetStream()
     setStep("filter")
   }
 
-  const handleRecommend = async () => {
+  const handleVisualRecommend = async () => {
     if (!image) return
-    setLoading(true)
-    setError(null)
+    setStep("result")
+    await recommendVisual(image, filters)
+  }
 
-    try {
-      const response = await fetch("http://127.0.0.1:8003/outfit/recommend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image, ...filters })
-      })
-
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.detail || "Bir hata oluştu")
-      }
-
-      const data = await response.json()
-      setResult(data)
-      setStep("result")
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
+  const handleChatRecommend = async (message) => {
+    if (!message.trim()) return
+    const newHistory = [...chatHistory, { role: "user", content: message }]
+    setChatHistory(newHistory)
+    setChatMessage("")
+    setStep("result")
+    await recommendChat(message, filters, chatHistory)
+    if (assistantMessage) {
+      setChatHistory(prev => [...prev, { role: "assistant", content: assistantMessage }])
     }
   }
 
   const handleReset = () => {
+    setMode(null)
     setImage(null)
     setPreview(null)
-    setResult(null)
-    setError(null)
-    setStep("upload")
+    setChatMessage("")
+    setChatHistory([])
+    resetStream()
+    setStep("landing")
   }
+
+  const handleBack = () => {
+    resetStream()
+    setStep(mode === "visual" ? "filter" : "chat")
+  }
+
+  // ── Render ────────────────────────────────────────────────
 
   return (
     <div className="app">
-      {/* Header */}
       <header className="header">
         <div className="header-inner">
           <div className="logo" onClick={handleReset}>
@@ -77,45 +91,83 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main */}
       <main className="main">
+        {step === "landing" && (
+          <LandingSection onSelect={handleModeSelect} />
+        )}
+
         {step === "upload" && (
-          <UploadSection onUpload={handleImageUpload} />
+          <UploadSection
+            onUpload={handleImageUpload}
+            onBack={() => setStep("landing")}
+          />
+        )}
+
+        {step === "chat" && (
+          <ChatSection
+            filters={filters}
+            onFiltersChange={setFilters}
+            message={chatMessage}
+            onMessageChange={setChatMessage}
+            onSubmit={handleChatRecommend}
+            chatHistory={chatHistory}
+            loading={isLoading}
+            error={error}
+            onBack={() => setStep("landing")}
+          />
         )}
 
         {step === "filter" && (
           <div className="filter-stage">
-            {/* Uploaded image preview */}
             <div className="uploaded-preview">
               <div className="preview-label">Yüklenen Kıyafet</div>
-              <img src={preview} alt="Yüklenen kıyafet" className="preview-img" />
-              <button className="btn-ghost" onClick={handleReset}>
+              <img src={preview} alt="Kıyafet" className="preview-img" />
+              <button className="btn-ghost" onClick={() => setStep("upload")}>
                 Değiştir
               </button>
             </div>
-
             <FilterPanel
               filters={filters}
               onChange={setFilters}
-              onSubmit={handleRecommend}
-              loading={loading}
+              onSubmit={handleVisualRecommend}
+              loading={isLoading}
             />
-
-            {error && <div className="error-msg">⚠ {error}</div>}
           </div>
         )}
 
-        {step === "result" && result && (
-          <OutfitResults
-            result={result}
-            preview={preview}
-            onReset={handleReset}
-            onBack={() => setStep("filter")}
-          />
+        {step === "result" && (
+          <>
+            {/* Loading status bar */}
+            {isLoading && (
+              <LoadingStatus
+                stage={stage}
+                message={stageMessage}
+                enrichedCount={enrichedCount}
+                totalCount={outfits.length}
+              />
+            )}
+
+            {/* Error */}
+            {error && <div className="error-msg">⚠ {error}</div>}
+
+            {/* Results — show progressively as they stream in */}
+            {(outfits.length > 0 || done) && (
+              <OutfitResults
+                outfits={outfits}
+                analysis={analysis}
+                assistantMessage={assistantMessage}
+                preview={preview}
+                mode={mode}
+                isLoading={isLoading}
+                onReset={handleReset}
+                onBack={handleBack}
+                onNewChat={() => { resetStream(); setStep("chat") }}
+              />
+            )}
+          </>
         )}
       </main>
 
-      {/* Footer */}
       <footer className="footer">
         <p>© 2025 Aynora · Yapay Zeka Destekli Moda</p>
       </footer>
