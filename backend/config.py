@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     # CORS — comma-separated list of allowed origins
     # Example in .env: CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:5174"
 
     # App metadata
     APP_NAME: str = "Aynora"

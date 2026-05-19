@@ -49,6 +49,21 @@ def image_to_embedding(image: Image.Image) -> list[float]:
     return embedding.squeeze().tolist()
 
 
+def text_to_embedding(text: str) -> list[float]:
+    """
+    Convert a text description to a 512-dimensional CLIP embedding.
+    Used for Stil DNA: outfit descriptions → searchable vectors.
+    """
+    _load_model()
+
+    tokens = _tokenizer([text])  # Tokenize text
+
+    with torch.no_grad():
+        embedding = _model.encode_text(tokens)
+        embedding = embedding / embedding.norm(dim=-1, keepdim=True)
+
+    return embedding.squeeze().tolist()
+
 def base64_to_embedding(base64_str: str) -> list[float]:
     """
     Convenience wrapper: base64 string → CLIP embedding.

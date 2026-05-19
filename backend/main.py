@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import outfit
 from dotenv import load_dotenv
 from config import settings
+from middleware.rate_limiter import RateLimiterMiddleware
+from routers import dna
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,9 +23,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimiterMiddleware)
 
-# Register routers
 app.include_router(outfit.router, prefix="/outfit", tags=["outfit"])
+app.include_router(dna.router, prefix="/outfit", tags=["dna"])
 
 
 @app.get("/health")

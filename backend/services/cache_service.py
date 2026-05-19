@@ -10,7 +10,7 @@ How it works:
 
 Strategy:
 - Cache 20 outfits per unique semantic query
-- Return 5 random outfits each time → user sees variety
+- Return 6 random outfits each time → user sees variety
 - TTL: 24 hours
 - Similarity threshold: 0.90
 """
@@ -26,7 +26,7 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 # Similarity threshold — above this score, cache hit is returned
-SIMILARITY_THRESHOLD = 0.90
+SIMILARITY_THRESHOLD = 0.92
 # Cache TTL in seconds (24 hours)
 CACHE_TTL = 86400
 # Max cached entries to scan for similarity (keep low for speed)
@@ -34,7 +34,7 @@ MAX_SCAN_KEYS = 200
 # Store N outfits per query
 CACHE_POOL_SIZE = 20
 # Return N random outfits per request
-SERVE_SIZE = 5
+SERVE_SIZE = 6
 
 # ── Lazy singletons ───────────────────────────────────────────
 _redis:  Redis | None = None
@@ -62,7 +62,6 @@ def _get_model() -> SentenceTransformer:
         # Lightweight multilingual model — supports Turkish
         _model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
     return _model
-
 
 def _build_cache_key(embedding: list[float]) -> str:
     """Create a short hash key from embedding for Redis storage."""
@@ -136,7 +135,7 @@ async def get_cached(params: dict) -> dict | None:
             sim = _cosine_similarity(q_emb, cached_emb)
             if sim >= SIMILARITY_THRESHOLD:
                 logger.info(f"Cache HIT — similarity: {sim:.3f}")
-                # Pick 5 random outfits from the pool of 20
+                # Pick 6 random outfits from the pool of 20
                 all_outfits = entry.get("outfits", [])
                 if len(all_outfits) <= SERVE_SIZE:
                     selected = all_outfits
