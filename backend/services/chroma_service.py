@@ -111,3 +111,21 @@ def get_collection_stats() -> dict:
         "total_items": collection.count(),
         "db_path": settings.CHROMA_DB_PATH,
     }
+
+def get_or_create_collection(collection_name: str):
+    """
+    Get or create a named ChromaDB collection.
+    Used by Stil DNA to create per-user collections.
+    """
+    global _client
+
+    if _client is None:
+        _client = chromadb.PersistentClient(
+            path=settings.CHROMA_DB_PATH,
+            settings=ChromaSettings(anonymized_telemetry=False)
+        )
+
+    return _client.get_or_create_collection(
+        name=collection_name,
+        metadata={"hnsw:space": "cosine"}
+    )
