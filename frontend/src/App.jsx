@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react"
-import { useStreamingRecommend } from "./hooks/useStreamingRecommend"
+import { useStreamingRecommend } from "./hooks/Usestreamingrecommend"
 import { useDarkMode }           from "./hooks/useDarkMode"
 import Sidebar      from "./components/Sidebar"
 import HomeSection  from "./components/HomeSection"
