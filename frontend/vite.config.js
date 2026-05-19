@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    strictPort: false,
     proxy: {
       '/outfit': 'http://127.0.0.1:8003'
     }
